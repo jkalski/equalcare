@@ -105,6 +105,13 @@ function App() {
               <p className="font-semibold">Total</p>
               <p className="text-2xl">{results.total}</p>
             </div>
+            
+            {/* Bias Rating */}
+            <div className="mt-4 p-4 bg-yellow-50 rounded border-l-4 border-yellow-400">
+              <p className="font-semibold text-yellow-700">Bias Rating</p>
+              <p className="text-lg">{results.bias_label}</p>
+              <p className="text-sm text-gray-600">Bias Score: {results.bias_score}</p>
+            </div>
           </div>
         )}
       </div>

@@ -46,12 +46,27 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         male_percent = (num_male / total * 100) if total > 0 else 0
         female_percent = (num_female / total * 100) if total > 0 else 0
         
+        # Bias analysis
+        bias_score = abs(num_male - num_female) / total if total > 0 else 0
+        bias_label = ""
+        
+        if bias_score < 0.05:
+            bias_label = "Balanced"
+        elif bias_score < 0.2:
+            bias_label = "Mildly Imbalanced"
+        elif bias_score < 0.4:
+            bias_label = "Significantly Imbalanced"
+        else:
+            bias_label = "Highly Imbalanced"
+        
         result = {
             "male": int(num_male),
             "female": int(num_female),
             "total": int(total),
             "male_percent": round(male_percent, 2),
-            "female_percent": round(female_percent, 2)
+            "female_percent": round(female_percent, 2),
+            "bias_score": round(bias_score, 2),
+            "bias_label": bias_label
         }
         
         logger.info(f"Analysis complete: {result}")
