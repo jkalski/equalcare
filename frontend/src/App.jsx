@@ -8,6 +8,9 @@ const api = axios.create({
 
 function App() {
   const [response, setResponse] = useState("");
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handlePing = async () => {
     try {
@@ -19,16 +22,92 @@ function App() {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setIsLoading(true);
+    setError(null);
+    setResults(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await api.post("/api/upload", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setResults(response.data);
+    } catch (error) {
+      console.error("Upload Error:", error);
+      setError(error.response?.data?.error || "Failed to upload file");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">EqualCare</h1>
-      <button
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-        onClick={handlePing}
-      >
-        Ping API
-      </button>
-      {response && <p className="mt-4 text-green-600">Response: {response}</p>}
+      
+      {/* Ping Test Section */}
+      <div className="mb-8 p-4 border rounded">
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+          onClick={handlePing}
+        >
+          Ping API
+        </button>
+        {response && <p className="mt-4 text-green-600">Response: {response}</p>}
+      </div>
+
+      {/* File Upload Section */}
+      <div className="mb-8 p-4 border rounded">
+        <h2 className="text-xl font-semibold mb-4">Upload CSV File</h2>
+        <input
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="block w-full text-sm text-gray-500
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-full file:border-0
+            file:text-sm file:font-semibold
+            file:bg-blue-50 file:text-blue-700
+            hover:file:bg-blue-100"
+        />
+        
+        {isLoading && (
+          <div className="mt-4 text-blue-600">Analyzing file...</div>
+        )}
+        
+        {error && (
+          <div className="mt-4 text-red-600">Error: {error}</div>
+        )}
+        
+        {results && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Analysis Results</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-gray-50 rounded">
+                <p className="font-semibold">Male</p>
+                <p className="text-2xl">{results.male}</p>
+                <p className="text-sm text-gray-600">{results.male_percent}%</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded">
+                <p className="font-semibold">Female</p>
+                <p className="text-2xl">{results.female}</p>
+                <p className="text-sm text-gray-600">{results.female_percent}%</p>
+              </div>
+            </div>
+            <div className="mt-4 p-4 bg-gray-50 rounded">
+              <p className="font-semibold">Total</p>
+              <p className="text-2xl">{results.total}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
