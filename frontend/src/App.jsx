@@ -89,6 +89,14 @@ function App() {
         {results && (
           <div className="mt-4">
             <h3 className="text-lg font-semibold mb-2">Analysis Results</h3>
+            
+            {/* Column Info */}
+            <div className="mb-4 p-4 bg-blue-50 rounded border-l-4 border-blue-400">
+              <p className="text-sm text-blue-700">
+                Using column: <span className="font-mono">{results.used_column}</span>
+              </p>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-50 rounded">
                 <p className="font-semibold">Male</p>

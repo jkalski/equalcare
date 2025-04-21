@@ -37,9 +37,27 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         df = pd.read_csv(file.file)
         logger.info(f"CSV read successfully with columns: {df.columns.tolist()}")
         
-        # Count genders (case-insensitive)
-        num_male = df["gender"].str.lower().eq("male").sum()
-        num_female = df["gender"].str.lower().eq("female").sum()
+        # Define possible gender column names (lowercase only)
+        possible_gender_columns = ["gender", "sex", "gndr", "g", "s"]
+        
+        # Normalize column names for flexible matching
+        normalized_columns = {col.lower(): col for col in df.columns}
+        
+        # Try to find a matching gender-related column
+        gender_col = None
+        for col in possible_gender_columns:
+            if col in normalized_columns:
+                gender_col = normalized_columns[col]
+                break
+        
+        if not gender_col:
+            raise ValueError("Missing a recognized gender column. Expected one of: gender, sex, gndr, g, s")
+        
+        logger.info(f"Using gender column: {gender_col}")
+        
+        # Count gender values (case-insensitive string matching)
+        num_male = df[gender_col].astype(str).str.lower().eq("male").sum()
+        num_female = df[gender_col].astype(str).str.lower().eq("female").sum()
         total = num_male + num_female
         
         # Calculate percentages
@@ -60,6 +78,7 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             bias_label = "Highly Imbalanced"
         
         result = {
+            "used_column": gender_col,
             "male": int(num_male),
             "female": int(num_female),
             "total": int(total),
