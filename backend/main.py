@@ -140,6 +140,14 @@ async def generate_insight(data: Dict[str, Any]):
         if not OPENROUTER_API_KEY:
             raise ValueError("OpenRouter API key not configured")
             
+        # Debug logging for API key
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        print("🔐 OPENROUTER_API_KEY (truncated):", api_key[:10] if api_key else "None")
+        print("🔍 Headers being sent to OpenRouter:", {
+            "Authorization": f"Bearer {api_key[:10]}..." if api_key else "None",
+            "Content-Type": "application/json"
+        })
+
         male = data.get("male")
         female = data.get("female")
         bias_score = data.get("bias_score")
