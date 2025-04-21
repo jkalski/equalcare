@@ -1,5 +1,10 @@
 {
-  "build": {
-    "builder": "docker"
-  }
+  "services": [
+    {
+      "name": "equalcare",
+      "build": {
+        "builder": "docker"
+      }
+    }
+  ]
 }
