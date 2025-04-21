@@ -11,6 +11,8 @@ function App() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [insight, setInsight] = useState(null);
+  const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
 
   const handlePing = async () => {
     try {
@@ -22,6 +24,31 @@ function App() {
     }
   };
 
+  const generateInsight = async (results) => {
+    if (!results) return;
+    
+    setIsGeneratingInsight(true);
+    setError(null);
+    
+    try {
+      const response = await api.post("/api/insight", {
+        male: results.male,
+        female: results.female,
+        bias_score: results.bias_score,
+        bias_label: results.bias_label,
+        male_percent: results.male_percent,
+        female_percent: results.female_percent
+      });
+      
+      setInsight(response.data.insight || "No insight returned.");
+    } catch (error) {
+      console.error("Insight Error:", error);
+      setError(error.response?.data?.error || "Failed to generate insight");
+    } finally {
+      setIsGeneratingInsight(false);
+    }
+  };
+
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -29,6 +56,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setResults(null);
+    setInsight(null);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -40,6 +68,8 @@ function App() {
         },
       });
       setResults(response.data);
+      // Automatically generate insight after successful upload
+      generateInsight(response.data);
     } catch (error) {
       console.error("Upload Error:", error);
       setError(error.response?.data?.error || "Failed to upload file");
@@ -124,6 +154,20 @@ function App() {
               <p className="font-semibold text-yellow-700">Bias Rating</p>
               <p className="text-lg">{results.bias_label}</p>
               <p className="text-sm text-gray-600">Bias Score: {results.bias_score}</p>
+            </div>
+
+            {/* AI Insight Section */}
+            <div className="mt-6">
+              {isGeneratingInsight && (
+                <div className="text-blue-500 animate-pulse">Generating AI insight...</div>
+              )}
+              
+              {insight && (
+                <div className="p-4 border-l-4 border-purple-500 bg-purple-50 rounded">
+                  <h3 className="text-lg font-bold text-purple-800 mb-2">AI Insight</h3>
+                  <p className="text-gray-800 whitespace-pre-line">{insight}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import os
 import logging
 import pandas as pd
 from typing import Dict, Any
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +22,10 @@ logger.info(f"Assets contents: {os.listdir(os.path.join(frontend_path, 'assets')
 # Mount static assets first (this takes precedence over routes)
 app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path, "assets")), name="assets")
 logger.info("Mounted static files at /assets")
+
+# OpenRouter configuration
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = "openai/gpt-3.5-turbo"  # or use another model like "mistralai/mistral-7b-instruct"
 
 # API routes
 @app.get("/api/ping")
@@ -121,6 +126,45 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"Error processing file: {str(e)}")
+        return {"error": str(e)}
+
+@app.post("/api/insight")
+async def generate_insight(data: Dict[str, Any]):
+    try:
+        male = data.get("male")
+        female = data.get("female")
+        bias_score = data.get("bias_score")
+        bias_label = data.get("bias_label")
+        male_percent = data.get("male_percent")
+        female_percent = data.get("female_percent")
+
+        prompt = (
+            f"The uploaded dataset contains {male} males and {female} females "
+            f"(male: {male_percent}%, female: {female_percent}%). This results in a bias score of {bias_score}, "
+            f"labeled as '{bias_label}'.\n\n"
+            "Explain the potential issues this gender imbalance could cause in healthcare or clinical research, "
+            "what impact it may have on outcomes, and suggest how such bias could be mitigated."
+        )
+
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": OPENROUTER_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        )
+
+        response.raise_for_status()
+        reply = response.json()["choices"][0]["message"]["content"]
+
+        return {"insight": reply}
+
+    except Exception as e:
+        logger.error(f"Error generating AI insight: {str(e)}")
         return {"error": str(e)}
 
 # Serve index.html on root
