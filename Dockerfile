@@ -27,13 +27,9 @@ COPY backend/ .
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/build ./build
 
-# Set environment variables
+# Set environment variables (Railway will inject OPENROUTER_API_KEY at runtime)
 ENV FRONTEND_PATH=/app/build
 ENV OPENROUTER_MODEL=openai/gpt-3.5-turbo
-
-# The API key should be passed at runtime
-ARG OPENROUTER_API_KEY
-ENV OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
 
 # Expose port
 EXPOSE 8000
