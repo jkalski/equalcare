@@ -1,14 +1,14 @@
-# Build frontend
-FROM node:18 as frontend
+# Use Node.js for frontend build
+FROM node:18-alpine as frontend-builder
 
-WORKDIR /frontend
+WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
-COPY frontend/ ./
+COPY frontend/ .
 RUN npm run build
 
-# Build backend
-FROM python:3.9-slim
+# Use Python for backend
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -17,20 +17,26 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
+# Install Python dependencies
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
-COPY . .
+# Copy backend code
+COPY backend/ .
 
-COPY --from=frontend /frontend/build ./build
+# Copy built frontend from frontend-builder
+COPY --from=frontend-builder /app/frontend/build ./build
 
 # Set environment variables
 ENV FRONTEND_PATH=/app/build
-ENV OPENROUTER_API_KEY=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
+ENV OPENROUTER_MODEL=openai/gpt-3.5-turbo
 
-# Expose the port the app runs on
+# The API key should be passed at runtime
+ARG OPENROUTER_API_KEY
+ENV OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+
+# Expose port
 EXPOSE 8000
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

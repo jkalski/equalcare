@@ -6,6 +6,10 @@ import logging
 import pandas as pd
 from typing import Dict, Any
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +29,9 @@ logger.info("Mounted static files at /assets")
 
 # OpenRouter configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "openai/gpt-3.5-turbo"  # or use another model like "mistralai/mistral-7b-instruct"
+if not OPENROUTER_API_KEY:
+    logger.warning("OPENROUTER_API_KEY not found in environment variables")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-3.5-turbo")
 
 # API routes
 @app.get("/api/ping")
@@ -131,6 +137,9 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
 @app.post("/api/insight")
 async def generate_insight(data: Dict[str, Any]):
     try:
+        if not OPENROUTER_API_KEY:
+            raise ValueError("OpenRouter API key not configured")
+            
         male = data.get("male")
         female = data.get("female")
         bias_score = data.get("bias_score")
@@ -160,6 +169,7 @@ async def generate_insight(data: Dict[str, Any]):
 
         response.raise_for_status()
         reply = response.json()["choices"][0]["message"]["content"]
+        logger.info(f"Insight response: {reply}")
 
         return {"insight": reply}
 
