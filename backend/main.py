@@ -55,9 +55,28 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         
         logger.info(f"Using gender column: {gender_col}")
         
-        # Count gender values (case-insensitive string matching)
-        num_male = df[gender_col].astype(str).str.lower().eq("male").sum()
-        num_female = df[gender_col].astype(str).str.lower().eq("female").sum()
+        # Normalize and remap gender values
+        normalized_gender = df[gender_col].astype(str).str.lower().str.strip()
+        
+        # Remap alternate values to standard format
+        normalized_gender = normalized_gender.replace({
+            "m": "male",
+            "f": "female",
+            "1": "male",
+            "2": "female",
+            "male.": "male",
+            "female.": "female",
+            "m.": "male",
+            "f.": "female"
+        })
+        
+        # Log unique values found for debugging
+        unique_values = normalized_gender.unique()
+        logger.info(f"Unique gender values found: {unique_values}")
+        
+        # Count gender values
+        num_male = normalized_gender.eq("male").sum()
+        num_female = normalized_gender.eq("female").sum()
         total = num_male + num_female
         
         # Calculate percentages
@@ -85,7 +104,8 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             "male_percent": round(male_percent, 2),
             "female_percent": round(female_percent, 2),
             "bias_score": round(bias_score, 2),
-            "bias_label": bias_label
+            "bias_label": bias_label,
+            "unique_values": list(unique_values)  # For debugging
         }
         
         logger.info(f"Analysis complete: {result}")

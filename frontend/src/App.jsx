@@ -95,6 +95,10 @@ function App() {
               <p className="text-sm text-blue-700">
                 Using column: <span className="font-mono">{results.used_column}</span>
               </p>
+              {/* Debug Info */}
+              <div className="mt-2 text-xs text-blue-600">
+                <p>Unique values found: {results.unique_values.join(", ")}</p>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
