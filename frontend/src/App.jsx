@@ -97,7 +97,8 @@ function App() {
               </p>
               {/* Debug Info */}
               <div className="mt-2 text-xs text-blue-600">
-                <p>Unique values found: {results.unique_values.join(", ")}</p>
+                <p>Raw values found: {results.raw_values.join(", ")}</p>
+                <p className="mt-1">Normalized values: {results.normalized_values.join(", ")}</p>
               </div>
             </div>
             

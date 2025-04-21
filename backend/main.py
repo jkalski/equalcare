@@ -55,15 +55,22 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         
         logger.info(f"Using gender column: {gender_col}")
         
+        # Get raw values for debugging
+        raw_values = df[gender_col].astype(str).unique()
+        logger.info(f"Raw unique values in column: {raw_values}")
+        
         # Normalize and remap gender values
         normalized_gender = df[gender_col].astype(str).str.lower().str.strip()
         
         # Remap alternate values to standard format
         normalized_gender = normalized_gender.replace({
+            # Numeric encodings
+            "1": "male",
+            "0": "female",
+            # Letter encodings
             "m": "male",
             "f": "female",
-            "1": "male",
-            "2": "female",
+            # Common variations
             "male.": "male",
             "female.": "female",
             "m.": "male",
@@ -72,7 +79,7 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         
         # Log unique values found for debugging
         unique_values = normalized_gender.unique()
-        logger.info(f"Unique gender values found: {unique_values}")
+        logger.info(f"Unique gender values after normalization: {unique_values}")
         
         # Count gender values
         num_male = normalized_gender.eq("male").sum()
@@ -105,7 +112,8 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             "female_percent": round(female_percent, 2),
             "bias_score": round(bias_score, 2),
             "bias_label": bias_label,
-            "unique_values": list(unique_values)  # For debugging
+            "raw_values": list(raw_values),  # For debugging
+            "normalized_values": list(unique_values)  # For debugging
         }
         
         logger.info(f"Analysis complete: {result}")
