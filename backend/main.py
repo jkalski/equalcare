@@ -156,11 +156,14 @@ async def generate_insight(data: Dict[str, Any]):
         female_percent = data.get("female_percent")
 
         prompt = (
-            f"The uploaded dataset contains {male} males and {female} females "
-            f"(male: {male_percent}%, female: {female_percent}%). This results in a bias score of {bias_score}, "
-            f"labeled as '{bias_label}'.\n\n"
-            "Explain the potential issues this gender imbalance could cause in healthcare or clinical research, "
-            "what impact it may have on outcomes, and suggest how such bias could be mitigated."
+            f"The uploaded dataset contains {male} males ({male_percent}%) and {female} females ({female_percent}%). "
+            f"The bias score is {bias_score}, which is classified as '{bias_label}'.\n\n"
+            "As a healthcare data scientist, provide a comprehensive analysis with the following sections:\n\n"
+            "1. RESEARCH IMPACT: How might this gender distribution affect research validity and generalizability?\n\n"
+            "2. CLINICAL IMPLICATIONS: What specific healthcare outcomes could be affected by this gender imbalance?\n\n"
+            "3. MITIGATION STRATEGIES: What 3-4 specific methodological approaches could researchers use to address this bias?\n\n"
+            "4. REPORTING RECOMMENDATIONS: How should researchers ethically document and report this gender distribution?\n\n"
+            "Format your response with clear section headings and bullet points for key recommendations."
         )
 
         response = requests.post(

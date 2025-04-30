@@ -13,6 +13,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [insight, setInsight] = useState(null);
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const handlePing = async () => {
     try {
@@ -53,6 +54,12 @@ function App() {
     const file = event.target.files[0];
     if (!file) return;
 
+    // Check file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setError("Please upload a CSV file");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setResults(null);
@@ -78,24 +85,73 @@ function App() {
     }
   };
 
+  // Simple visualization component
+  const GenderBarChart = ({ male, female, malePercent, femalePercent }) => {
+    return (
+      <div className="mt-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Distribution Visualization</h4>
+        <div className="h-8 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-blue-500 float-left flex items-center justify-center text-white text-xs font-medium px-2"
+            style={{ width: `${malePercent}%`, minWidth: '40px' }}
+          >
+            {malePercent}%
+          </div>
+          <div 
+            className="h-full bg-pink-500 float-left flex items-center justify-center text-white text-xs font-medium px-2"
+            style={{ width: `${femalePercent}%`, minWidth: '40px' }}
+          >
+            {femalePercent}%
+          </div>
+        </div>
+        <div className="flex justify-between text-xs text-gray-600 mt-1">
+          <div>Male ({male})</div>
+          <div>Female ({female})</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">EqualCare</h1>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-blue-800">EqualCare</h1>
+        <p className="text-gray-600 mt-2">Gender Bias Analysis for Healthcare Research</p>
+      </div>
       
-      {/* Ping Test Section */}
-      <div className="mb-8 p-4 border rounded">
-        <button
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-          onClick={handlePing}
-        >
-          Ping API
-        </button>
-        {response && <p className="mt-4 text-green-600">Response: {response}</p>}
+      {/* Instructions Section */}
+      <div className="mb-8 p-5 border rounded-lg bg-white shadow-sm">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">About EqualCare</h2>
+          <button 
+            onClick={() => setShowInstructions(!showInstructions)}
+            className="text-blue-500 hover:text-blue-700 text-sm font-medium"
+          >
+            {showInstructions ? 'Hide Instructions' : 'Show Instructions'}
+          </button>
+        </div>
+        
+        {showInstructions && (
+          <div className="mt-4 text-sm text-gray-700 space-y-2">
+            <p>EqualCare helps analyze gender representation in healthcare datasets:</p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>Upload a CSV file containing your dataset</li>
+              <li>The system will automatically identify gender-related columns</li>
+              <li>View the analysis of gender distribution and bias assessment</li>
+              <li>Read AI-generated insights about potential implications</li>
+            </ol>
+            <p className="font-medium mt-2">Supported formats:</p>
+            <ul className="list-disc pl-5">
+              <li>CSV files with columns named: gender, sex, gndr, g, or s</li>
+              <li>Values can be: male/female, m/f, 1/0, or similar variations</li>
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* File Upload Section */}
-      <div className="mb-8 p-4 border rounded">
-        <h2 className="text-xl font-semibold mb-4">Upload CSV File</h2>
+      <div className="mb-8 p-5 border rounded-lg bg-white shadow-sm">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Upload Dataset</h2>
         <input
           type="file"
           accept=".csv"
@@ -109,21 +165,27 @@ function App() {
         />
         
         {isLoading && (
-          <div className="mt-4 text-blue-600">Analyzing file...</div>
+          <div className="mt-4 flex items-center text-blue-600">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Analyzing file...
+          </div>
         )}
         
         {error && (
-          <div className="mt-4 text-red-600">Error: {error}</div>
+          <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-md border border-red-200">
+            Error: {error}
+          </div>
         )}
         
         {results && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">Analysis Results</h3>
-            
+          <div className="mt-6 space-y-6">
             {/* Column Info */}
-            <div className="mb-4 p-4 bg-blue-50 rounded border-l-4 border-blue-400">
-              <p className="text-sm text-blue-700">
-                Using column: <span className="font-mono">{results.used_column}</span>
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-700 font-medium">
+                Using column: <span className="font-mono bg-blue-100 px-1 py-0.5 rounded">{results.used_column}</span>
               </p>
               {/* Debug Info */}
               <div className="mt-2 text-xs text-blue-600">
@@ -132,45 +194,111 @@ function App() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded">
-                <p className="font-semibold">Male</p>
-                <p className="text-2xl">{results.male}</p>
-                <p className="text-sm text-gray-600">{results.male_percent}%</p>
+            {/* Gender Distribution */}
+            <div className="bg-white p-5 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Gender Distribution</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Male Card */}
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="font-semibold text-blue-800">Male</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{results.male}</p>
+                  <p className="text-sm text-blue-600">{results.male_percent}% of total</p>
+                </div>
+                
+                {/* Female Card */}
+                <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                  <p className="font-semibold text-pink-800">Female</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{results.female}</p>
+                  <p className="text-sm text-pink-600">{results.female_percent}% of total</p>
+                </div>
+                
+                {/* Total Card */}
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="font-semibold text-gray-800">Total</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{results.total}</p>
+                  <p className="text-sm text-gray-600">participants</p>
+                </div>
               </div>
-              <div className="p-4 bg-gray-50 rounded">
-                <p className="font-semibold">Female</p>
-                <p className="text-2xl">{results.female}</p>
-                <p className="text-sm text-gray-600">{results.female_percent}%</p>
-              </div>
-            </div>
-            <div className="mt-4 p-4 bg-gray-50 rounded">
-              <p className="font-semibold">Total</p>
-              <p className="text-2xl">{results.total}</p>
+              
+              {/* Bar Chart */}
+              <GenderBarChart 
+                male={results.male}
+                female={results.female}
+                malePercent={results.male_percent}
+                femalePercent={results.female_percent}
+              />
             </div>
             
             {/* Bias Rating */}
-            <div className="mt-4 p-4 bg-yellow-50 rounded border-l-4 border-yellow-400">
-              <p className="font-semibold text-yellow-700">Bias Rating</p>
-              <p className="text-lg">{results.bias_label}</p>
-              <p className="text-sm text-gray-600">Bias Score: {results.bias_score}</p>
+            <div className="bg-white p-5 rounded-lg border border-gray-200">
+              <div className="flex items-center mb-3">
+                <h3 className="text-lg font-semibold text-gray-800">Bias Assessment</h3>
+                <span className={`ml-2 text-sm px-3 py-1 rounded-full font-medium ${
+                  results.bias_label === 'Balanced' ? 'bg-green-100 text-green-800' :
+                  results.bias_label === 'Mildly Imbalanced' ? 'bg-yellow-100 text-yellow-800' :
+                  results.bias_label === 'Significantly Imbalanced' ? 'bg-orange-100 text-orange-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {results.bias_label}
+                </span>
+              </div>
+              
+              <div className="mt-2">
+                <div className="flex items-center mb-2">
+                  <div className="w-32 text-sm font-medium text-gray-700">Bias Score:</div>
+                  <div className="font-bold">{results.bias_score}</div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  {results.bias_label === 'Balanced' ? 
+                    'This dataset has a good balance between genders, which should provide representative results.' :
+                    results.bias_label === 'Mildly Imbalanced' ?
+                    'This dataset shows some gender imbalance. Consider this when interpreting results.' :
+                    results.bias_label === 'Significantly Imbalanced' ?
+                    'This dataset has substantial gender imbalance that may affect the reliability of findings.' :
+                    'This dataset is highly skewed by gender, which could significantly impact the validity of results.'
+                  }
+                </p>
+              </div>
             </div>
 
             {/* AI Insight Section */}
             <div className="mt-6">
               {isGeneratingInsight && (
-                <div className="text-blue-500 animate-pulse">Generating AI insight...</div>
+                <div className="flex items-center text-blue-600 bg-blue-50 p-4 rounded-lg">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating AI insight...
+                </div>
               )}
               
               {insight && (
-                <div className="p-4 border-l-4 border-purple-500 bg-purple-50 rounded">
-                  <h3 className="text-lg font-bold text-purple-800 mb-2">AI Insight</h3>
-                  <p className="text-gray-800 whitespace-pre-line">{insight}</p>
+                <div className="p-5 bg-white rounded-lg border border-purple-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-purple-800 mb-3">AI Analysis & Recommendations</h3>
+                  <div className="prose prose-sm max-w-none text-gray-700">
+                    <p className="whitespace-pre-line">{insight}</p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
+      </div>
+      
+      {/* API Status Section - Moved to bottom and styled more subtly */}
+      <div className="p-4 border rounded-lg bg-gray-50">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-700">API Status</h3>
+          <button
+            className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded"
+            onClick={handlePing}
+          >
+            Check API
+          </button>
+        </div>
+        {response && <p className="mt-2 text-sm text-green-600">Response: {response}</p>}
       </div>
     </div>
   );
