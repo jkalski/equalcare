@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import axios from 'axios';
 
 // Create axios instance with base URL
@@ -14,6 +14,7 @@ function App() {
   const [insight, setInsight] = useState(null);
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [exportFormat, setExportFormat] = useState('json');
 
   const handlePing = async () => {
     try {
@@ -110,6 +111,115 @@ function App() {
         </div>
       </div>
     );
+  };
+
+  // Age Distribution Component
+  const AgeDistributionCard = ({ ageAnalysis }) => {
+    if (!ageAnalysis) return null;
+    
+    // Get age groups and sort them for display
+    const ageGroups = Object.keys(ageAnalysis.age_groups).map(group => ({
+      label: group,
+      count: ageAnalysis.age_groups[group].count,
+      percent: ageAnalysis.age_groups[group].percent
+    }));
+    
+    return (
+      <div className="bg-white p-5 rounded-lg border border-gray-200 mt-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">Age Distribution</h3>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+          <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+            <p className="text-xs text-indigo-600 font-medium">Mean Age</p>
+            <p className="text-xl font-bold text-gray-800">{ageAnalysis.mean_age}</p>
+          </div>
+          
+          <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+            <p className="text-xs text-indigo-600 font-medium">Median Age</p>
+            <p className="text-xl font-bold text-gray-800">{ageAnalysis.median_age}</p>
+          </div>
+          
+          <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+            <p className="text-xs text-indigo-600 font-medium">Age Range</p>
+            <p className="text-xl font-bold text-gray-800">{ageAnalysis.min_age}-{ageAnalysis.max_age}</p>
+          </div>
+        </div>
+        
+        <h4 className="text-sm font-medium text-gray-700 mt-4 mb-2">Age Group Distribution</h4>
+        
+        {/* Age group bars */}
+        <div className="space-y-3">
+          {ageGroups.map((group, index) => (
+            <div key={index} className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium">{group.label}</span>
+                <span>{group.count} ({group.percent}%)</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-indigo-600 h-2.5 rounded-full" 
+                  style={{ width: `${group.percent}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const exportResults = () => {
+    if (!results) return;
+    
+    if (exportFormat === 'json') {
+      // Export as JSON
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(results, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "equalcare_analysis.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+    else if (exportFormat === 'csv') {
+      // Simple CSV export
+      const rows = [];
+      
+      // Header
+      rows.push(['Analysis Type', 'Metric', 'Value']);
+      
+      // Gender data
+      rows.push(['Gender', 'Male Count', results.male]);
+      rows.push(['Gender', 'Female Count', results.female]);
+      rows.push(['Gender', 'Male Percent', results.male_percent]);
+      rows.push(['Gender', 'Female Percent', results.female_percent]);
+      rows.push(['Gender', 'Bias Score', results.bias_score]);
+      rows.push(['Gender', 'Bias Label', results.bias_label]);
+      
+      // Age data if available
+      if (results.age_analysis) {
+        rows.push(['Age', 'Mean Age', results.age_analysis.mean_age]);
+        rows.push(['Age', 'Median Age', results.age_analysis.median_age]);
+        rows.push(['Age', 'Min Age', results.age_analysis.min_age]);
+        rows.push(['Age', 'Max Age', results.age_analysis.max_age]);
+        
+        // Age groups
+        Object.entries(results.age_analysis.age_groups).forEach(([group, data]) => {
+          rows.push(['Age Group', group, data.count]);
+          rows.push(['Age Group Percent', group, data.percent]);
+        });
+      }
+      
+      // Convert to CSV
+      const csvContent = rows.map(row => row.join(',')).join('\n');
+      const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "equalcare_analysis.csv");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
   };
 
   return (
@@ -282,6 +392,35 @@ function App() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Add Age Distribution Card after the gender bias assessment */}
+            {results.age_analysis && (
+              <AgeDistributionCard ageAnalysis={results.age_analysis} />
+            )}
+
+            {/* Add Export Section after all analysis cards */}
+            <div className="bg-white p-5 rounded-lg border border-gray-200 mt-6">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Export Results</h3>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-700">Format:</label>
+                  <select 
+                    value={exportFormat} 
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                </div>
+                <button
+                  onClick={exportResults}
+                  className="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-2 rounded"
+                >
+                  Export Analysis
+                </button>
+              </div>
             </div>
           </div>
         )}

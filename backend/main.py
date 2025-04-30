@@ -40,6 +40,62 @@ def ping(request: Request):
     logger.info(f"Request URL: {request.url}")
     return {"message": "pong"}
 
+def analyze_age_distribution(df):
+    """Analyze age distribution in the dataset if an age column exists."""
+    # Try to find age column
+    possible_age_columns = ["age", "years", "patient_age", "subject_age", "pat_age"]
+    
+    # Normalize column names for flexible matching
+    normalized_columns = {col.lower(): col for col in df.columns}
+    
+    # Try to find a matching age-related column
+    age_col = None
+    for col in possible_age_columns:
+        if col in normalized_columns:
+            age_col = normalized_columns[col]
+            break
+    
+    if not age_col:
+        return None  # No age column found
+    
+    # Clean age data (convert to numeric and handle errors)
+    df['age_clean'] = pd.to_numeric(df[age_col], errors='coerce')
+    
+    # Remove missing values
+    df_age = df.dropna(subset=['age_clean'])
+    
+    if len(df_age) == 0:
+        return None  # No valid age data
+    
+    # Calculate basic statistics
+    stats = {
+        "used_column": age_col,
+        "mean_age": round(df_age['age_clean'].mean(), 1),
+        "median_age": round(df_age['age_clean'].median(), 1),
+        "min_age": int(df_age['age_clean'].min()),
+        "max_age": int(df_age['age_clean'].max()),
+        "std_dev": round(df_age['age_clean'].std(), 1),
+    }
+    
+    # Create age groups
+    bins = [0, 18, 35, 50, 65, 120]
+    labels = ['Under 18', '18-34', '35-49', '50-64', '65+']
+    df_age['age_group'] = pd.cut(df_age['age_clean'], bins=bins, labels=labels, right=False)
+    
+    # Count by age group
+    age_groups = df_age['age_group'].value_counts().sort_index()
+    
+    # Add to stats
+    stats["total_valid"] = len(df_age)
+    stats["age_groups"] = {
+        label: {
+            "count": int(age_groups.get(label, 0)),
+            "percent": round(age_groups.get(label, 0) / len(df_age) * 100, 1)
+        } for label in labels
+    }
+    
+    return stats
+
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
     logger.info(f"File upload request received: {file.filename}")
@@ -127,6 +183,11 @@ async def upload_file(file: UploadFile = File(...)) -> Dict[str, Any]:
             "normalized_values": list(unique_values)  # For debugging
         }
         
+        # Add age analysis if available
+        age_analysis = analyze_age_distribution(df)
+        if age_analysis:
+            result["age_analysis"] = age_analysis
+        
         logger.info(f"Analysis complete: {result}")
         return result
         
@@ -154,15 +215,39 @@ async def generate_insight(data: Dict[str, Any]):
         bias_label = data.get("bias_label")
         male_percent = data.get("male_percent")
         female_percent = data.get("female_percent")
-
-        prompt = (
+        
+        # Build prompt based on gender data
+        gender_info = (
             f"The uploaded dataset contains {male} males ({male_percent}%) and {female} females ({female_percent}%). "
-            f"The bias score is {bias_score}, which is classified as '{bias_label}'.\n\n"
+            f"The bias score is {bias_score}, which is classified as '{bias_label}'."
+        )
+        
+        # Add age information if available
+        age_info = ""
+        if "age_analysis" in data:
+            age = data["age_analysis"]
+            age_info = (
+                f"\n\nThe dataset also includes age information. "
+                f"The mean age is {age['mean_age']}, with a median of {age['median_age']} "
+                f"and range from {age['min_age']} to {age['max_age']} years. "
+                f"Age groups distribution: "
+            )
+            
+            # Add age group distribution
+            for group, group_data in age["age_groups"].items():
+                if group_data["count"] > 0:
+                    age_info += f"{group}: {group_data['count']} ({group_data['percent']}%), "
+            
+            # Remove trailing comma and space
+            age_info = age_info.rstrip(", ")
+        
+        prompt = (
+            f"{gender_info}{age_info}\n\n"
             "As a healthcare data scientist, provide a comprehensive analysis with the following sections:\n\n"
-            "1. RESEARCH IMPACT: How might this gender distribution affect research validity and generalizability?\n\n"
-            "2. CLINICAL IMPLICATIONS: What specific healthcare outcomes could be affected by this gender imbalance?\n\n"
-            "3. MITIGATION STRATEGIES: What 3-4 specific methodological approaches could researchers use to address this bias?\n\n"
-            "4. REPORTING RECOMMENDATIONS: How should researchers ethically document and report this gender distribution?\n\n"
+            "1. RESEARCH IMPACT: How might this demographic distribution affect research validity and generalizability?\n\n"
+            "2. CLINICAL IMPLICATIONS: What specific healthcare outcomes could be affected by this distribution?\n\n"
+            "3. MITIGATION STRATEGIES: What 3-4 specific methodological approaches could researchers use to address these potential biases?\n\n"
+            "4. REPORTING RECOMMENDATIONS: How should researchers ethically document and report these findings?\n\n"
             "Format your response with clear section headings and bullet points for key recommendations."
         )
 
